@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🦊 瓶颈理论选股仪表盘 | Serenity Strategy Dashboard</title>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --card: #12121a;
+  --border: #1e1e30;
+  --text: #c8c8d4;
+  --text-dim: #6b6b7b;
+  --accent: #00d4aa;
+  --accent2: #6c5ce7;
+  --gold: #f0c040;
+  --red: #ff4757;
+  --blue: #3742fa;
+  --green: #2ed573;
+  --orange: #ffa502;
+  --pink: #ff6b81;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+::selection { background: var(--accent); color: var(--bg); }
+
+/* Background glow */
+.bg-glow {
+  position: fixed; border-radius: 50%; filter: blur(120px);
+  opacity: 0.12; pointer-events: none; z-index: 0;
+}
+.glow-1 { width: 600px; height: 600px; background: var(--accent2); top: -200px; left: -100px; }
+.glow-2 { width: 500px; height: 500px; background: var(--accent); bottom: -150px; right: -100px; }
+
+/* Layout */
+.container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; position: relative; z-index: 1; }
+
+/* Header */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+}
+.header h1 {
+  font-size: 32px; font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header-sub { color: var(--text-dim); font-size: 14px; }
+.header-right { display: flex; gap: 12px; align-items: center; }
+.badge {
+  padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  background: var(--border); border: 1px solid var(--border);
+}
+.badge-live { border-color: var(--green); color: var(--green); }
+.badge-live::before { content: '● '; animation: pulse 2s infinite; }
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* Tabs */
+.tabs {
+  display: flex; gap: 4px; margin-bottom: 24px;
+  background: var(--card); border-radius: 12px; padding: 4px;
+  border: 1px solid var(--border); width: fit-content;
+}
+.tab {
+  padding: 10px 20px; border-radius: 10px; cursor: pointer;
+  font-size: 14px; font-weight: 600; border: none; background: transparent;
+  color: var(--text-dim); transition: all 0.2s;
+}
+.tab:hover { color: #fff; }
+.tab.active { background: var(--accent2); color: #fff; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Stats row */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+.stat-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 20px 24px; position: relative; overflow: hidden;
+}
+.stat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.stat-hold::before { background: var(--accent); }
+.stat-rec::before { background: var(--gold); }
+.stat-watch::before { background: var(--accent2); }
+.stat-score::before { background: var(--orange); }
+.stat-fox::before { background: var(--orange); }
+
+.stat-icon { font-size: 28px; margin-bottom: 8px; }
+.stat-value { font-size: 36px; font-weight: 800; line-height: 1; }
+.stat-label { color: var(--text-dim); font-size: 13px; margin-top: 6px; }
+
+/* Table */
+.table-section { margin-bottom: 40px; }
+.section-title {
+  font-size: 20px; font-weight: 700; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-title::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+.table-wrapper {
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  overflow: hidden;
+}
+table { width: 100%; border-collapse: collapse; }
+thead { background: rgba(108,92,231,0.08); }
+th {
+  padding: 14px 16px; text-align: left; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim);
+}
+td { padding: 14px 16px; font-size: 14px; border-top: 1px solid var(--border); }
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+.tag {
+  display: inline-block; padding: 3px 10px; border-radius: 6px;
+  font-size: 12px; font-weight: 600;
+}
+.tag-hold { background: rgba(0,212,170,0.15); color: var(--accent); }
+.tag-rec { background: rgba(240,192,64,0.15); color: var(--gold); }
+.tag-watch { background: rgba(108,92,231,0.15); color: var(--accent2); }
+.tag-own { background: rgba(255,107,129,0.15); color: var(--pink); }
+.tag-fan { background: rgba(255,165,2,0.15); color: var(--orange); }
+.tag-core { background: rgba(46,213,115,0.15); color: var(--green); }
+
+.stars { color: var(--gold); letter-spacing: 2px; font-size: 13px; }
+.code { font-family: 'SF Mono', 'Cascadia Code', monospace; font-weight: 700; color: #fff; }
+.report-link {
+  color: var(--accent2); text-decoration: none; font-size: 12px;
+  padding: 4px 10px; background: rgba(108,92,231,0.1); border-radius: 6px;
+  transition: 0.2s; cursor: pointer;
+}
+.report-link:hover { background: rgba(108,92,231,0.25); color: var(--accent); }
+
+/* Ranking bar */
+.rank-bar {
+  display: flex; align-items: center; gap: 8px; margin-top: 4px;
+}
+.rank-fill {
+  height: 6px; border-radius: 3px; transition: width 0.6s ease;
+}
+.rank-fill.gold { background: linear-gradient(90deg, var(--gold), var(--orange)); }
+.rank-fill.purple { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+
+/* Fox section subtitle */
+.fox-subtitle {
+  color: var(--text-dim); font-size: 13px; margin-bottom: 16px; margin-top: -8px;
+}
+
+/* Footer */
+.footer {
+  margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; color: var(--text-dim); font-size: 12px;
+  flex-wrap: wrap; gap: 8px;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stats-row .stat-card { animation: fadeInUp 0.5s ease both; }
+.stats-row .stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stats-row .stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stats-row .stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stats-row .stat-card:nth-child(4) { animation-delay: 0.4s; }
+.table-wrapper { animation: fadeInUp 0.5s 0.3s ease both; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .header h1 { font-size: 24px; }
+  th, td { padding: 10px 8px; font-size: 12px; }
+  .tabs { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-glow glow-1"></div>
+<div class="bg-glow glow-2"></div>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>🦊 瓶颈理论选股仪表盘</h1>
+      <div class="header-sub">Serenity Chokepoint Theory · v1.1 · 更新：<span id="updateTime">--</span></div>
+    </div>
+    <div class="header-right">
+      <span class="badge badge-live">实时追踪</span>
+      <span class="badge" style="border-color:var(--accent2);color:var(--accent2)">serenity-strategy</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('stocks')">📋 选股跟踪</button>
+    <button class="tab" onclick="switchTab('fox')">🦊 白毛股神标的</button>
+  </div>
+
+  <!-- ==================== TAB 1: 选股跟踪 ==================== -->
+  <div class="tab-panel active" id="tab-stocks">
+    <div class="stats-row">
+      <div class="stat-card stat-hold">
+        <div class="stat-icon">📦</div>
+        <div class="stat-value" id="holdCount">0</div>
+        <div class="stat-label">持仓股票</div>
+      </div>
+      <div class="stat-card stat-rec">
+        <div class="stat-icon">💡</div>
+        <div class="stat-value" id="recCount">0</div>
+        <div class="stat-label">推荐关注</div>
+      </div>
+      <div class="stat-card stat-watch">
+        <div class="stat-icon">👀</div>
+        <div class="stat-value" id="watchCount">0</div>
+        <div class="stat-label">观察名单</div>
+      </div>
+      <div class="stat-card stat-score">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-value" id="avgScore">--</div>
+        <div class="stat-label">平均瓶颈评分</div>
+      </div>
+    </div>
+
+    <div class="table-section">
+      <div class="section-title">📋 选股跟踪记录</div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>代码</th><th>名称</th><th>赛道</th><th>来源</th><th>类型</th>
+              <th>瓶颈评分</th><th>评级条</th><th>状态</th><th>报告</th>
+            </tr>
+          </thead>
+          <tbody id="stockTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 2: 白毛股神标的 ==================== -->
+  <div class="tab-panel" id="tab-fox">
+    <div class="stats-row">
+      <div class="stat-card stat-fox">
+        <div class="stat-icon">🦊</div>
+        <div class="stat-value" id="foxTotal">0</div>
+        <div class="stat-label">涉及标的</div>
+      </div>
+      <div class="stat-card stat-score">
+        <div class="stat-icon">📊</div>
+        <div class="stat-value" id="foxSectors">0</div>
+        <div class="stat-label">覆盖行业</div>
+      </div>
+      <div class="stat-card stat-rec">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-value" id="foxViews">0</div>
+        <div class="stat-label">最高阅读量</div>
+      </div>
+      <div class="stat-card stat-hold">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-value" id="foxTopScore">--</div>
+        <div class="stat-label">最高瓶颈评分</div>
+      </div>
+    </div>
+
+    <!-- 赛道分布 -->
+    <div class="table-section">
+      <div class="section-title">🗺️ 赛道分布</div>
+      <div class="table-wrapper" style="padding: 16px 24px; display:flex; flex-wrap:wrap; gap:10px;" id="sectorTags">
+      </div>
+    </div>
+
+    <!-- 白毛涉及的股票 -->
+    <div class="table-section">
+      <div class="section-title">🦊 白毛股神帖子涉及标的</div>
+      <div class="fox-subtitle">从 @aleabitoreddit 帖子中提取的所有股票代码，按赛道分类</div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>代码</th><th>公司</th><th>赛道</th><th>产业链位置</th><th>类型</th>
+              <th>白毛态度</th><th>瓶颈评分</th><th>相关帖子</th>
+            </tr>
+          </thead>
+          <tbody id="foxTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rating Legend -->
+  <div class="table-section">
+    <div class="section-title">⭐ 评级标准</div>
+    <div class="table-wrapper" style="padding: 20px 24px;">
+      <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+        <div style="text-align:center; padding:12px; background:rgba(240,192,64,0.05); border-radius:10px;">
+          <div class="stars">⭐⭐⭐⭐⭐</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:6px;">顶级瓶颈<br>满分</div>
+        </div>
+        <div style="text-align:center; padding:12px; background:rgba(240,192,64,0.05); border-radius:10px;">
+          <div class="stars">⭐⭐⭐⭐</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:6px;">优质瓶颈<br>满足 4/5 标准</div>
+        </div>
+        <div style="text-align:center; padding:12px; background:rgba(240,192,64,0.05); border-radius:10px;">
+          <div class="stars">⭐⭐⭐</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:6px;">中等瓶颈<br>不对称性偏弱</div>
+        </div>
+        <div style="text-align:center; padding:12px; background:rgba(240,192,64,0.05); border-radius:10px;">
+          <div class="stars">⭐⭐</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:6px;">弱瓶颈<br>高风险/太早期</div>
+        </div>
+        <div style="text-align:center; padding:12px; background:rgba(240,192,64,0.05); border-radius:10px;">
+          <div class="stars">⭐</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:6px;">不符合<br>瓶颈标准</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>🫡 拉布布 · 瓶颈理论追踪系统</span>
+    <span>分析框架：serenity-strategy v1.0</span>
+  </div>
+
+</div>
+
+<script>
+// ====== 数据层 ======
+
+// 选股跟踪数据
+const STOCKS = [
+  { id:1, date:'06-10', code:'688019', name:'安集科技', sector:'CMP抛光液/半导体', source:'老板持仓', type:'hold', score:3, status:'持有中（除权除息日）', report:'r001_安集科技688019.html' },
+  { id:2, date:'06-10', code:'300946', name:'恒而达', sector:'丝杠/人形机器人', source:'瓶颈理论筛选', type:'hold', score:4, status:'06-10买入 · PE130x 低换手0.48%', report:'r005_恒而达300946深度分析.html' },
+  { id:3, date:'06-10', code:'2015.HK', name:'理想汽车', sector:'新能源车/增程SUV', source:'老板持仓', type:'hold', score:0, status:'成本80.6 · 4500股 · 17.6%', report:'r006_理想汽车分析.html' },
+  { id:4, date:'06-09', code:'688017', name:'绿的谐波', sector:'谐波减速器/人形机器人', source:'白毛股神点名', type:'watch', score:3, status:'已被点名 · YTD+120%', report:'r003_白毛股神分析报告.html' },
+  { id:5, date:'06-09', code:'688160', name:'步科股份', sector:'无框力矩电机/人形机器人', source:'瓶颈理论覆盖', type:'watch', score:3, status:'关注中', report:'r002_人形机器人赛道选股.html' },
+  { id:6, date:'06-09', code:'301596', name:'瑞迪智驱', sector:'丝杠/人形机器人', source:'瓶颈理论覆盖', type:'watch', score:2, status:'太早期，待验证', report:'r002_人形机器人赛道选股.html' }
+];
+
+// 白毛股神涉及的股票（从帖子提取）
+const FOX_STOCKS = [
+  // 光子/CPO 赛道
+  { id:1, code:'SIVE', name:'Sivers Photonics', sector:'光子/CPO', position:'CPO激光器（Nvidia供应链）', type:'core', attitude:'🚀 强烈推荐', score:5, note:'JP Morgan 5%+持仓' },
+  { id:2, code:'AAOI', name:'Applied Optoelectronics', sector:'光子/CPO', position:'光器件/光模块', type:'core', attitude:'🚀 核心持仓', score:4, note:'800G/1.6T龙头' },
+  { id:3, code:'LITE', name:'Lumentum', sector:'光子/CPO', position:'光模块/激光器', type:'core', attitude:'✅ 持续看好', score:3, note:'大盘标的' },
+  { id:4, code:'AXTI', name:'AXT Inc', sector:'光子/CPO', position:'磷化铟衬底（全球40%）', type:'core', attitude:'🏆 早期成名作', score:5, note:'市值极小' },
+  { id:5, code:'POET', name:'POET Technologies', sector:'光子/CPO', position:'CPO封装', type:'core', attitude:'👀 关注', score:4, note:'封装Sivers激光器' },
+  // AI 半导体
+  { id:6, code:'ASX', name:'ASE Technology', sector:'AI半导体', position:'封测', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  { id:7, code:'AMKR', name:'Amkor Technology', sector:'AI半导体', position:'封装测试', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  { id:8, code:'GFS', name:'GlobalFoundries', sector:'AI半导体', position:'晶圆代工', type:'list', attitude:'✅ 购物清单', score:2, note:'16家清单之一' },
+  { id:9, code:'TSEM', name:'Tower Semiconductor', sector:'AI半导体', position:'特色工艺代工', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  // 光通信/EMS
+  { id:10, code:'FN', name:'Fabrinet', sector:'光通信/EMS', position:'光通信代工', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  { id:11, code:'CLS', name:'Celestica', sector:'光通信/EMS', position:'EMS代工', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  { id:12, code:'JBL', name:'Jabil', sector:'光通信/EMS', position:'EMS代工', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  { id:13, code:'COHR', name:'Coherent', sector:'光通信/EMS', position:'光互联/激光器', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  // 电源/其他
+  { id:14, code:'VICR', name:'Vicor', sector:'电源模块', position:'AI数据中心电源', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  { id:15, code:'NOK', name:'Nokia', sector:'网络设备', position:'网络设备', type:'list', attitude:'✅ 购物清单', score:2, note:'16家清单之一' },
+  // 云计算
+  { id:16, code:'NBIS', name:'Nebius', sector:'AI云计算', position:'AI云计算基础设施', type:'list', attitude:'⚠️ 关注但谨慎', score:3, note:'近0营收' },
+  // 存储/HBM
+  { id:17, code:'EWY', name:'韩国ETF(iShares)', sector:'存储/HBM', position:'韩国市场暴露', type:'trade', attitude:'✅ 期权交易383%收益', score:4, note:'波动率扩张交易' },
+  // 日本供应链
+  { id:18, code:'5802', name:'Sumitomo Electric', sector:'日本供应链', position:'光缆/材料', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  { id:19, code:'5801', name:'Furukawa Electric', sector:'日本供应链', position:'光纤/材料', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  // 台湾
+  { id:20, code:'3661', name:'世芯-KY (AlChip)', sector:'台湾供应链', position:'ASIC设计服务', type:'list', attitude:'✅ 购物清单', score:3, note:'16家清单之一' },
+  // A股相关
+  { id:21, code:'688017', name:'绿的谐波', sector:'人形机器人/减速器', position:'谐波减速器龙头', type:'own', attitude:'🔥 强烈看好', score:3, note:'长线持有 · YTD+120%' },
+  { id:22, code:'300308', name:'中际旭创', sector:'光模块/AI', position:'800G/1.6T光模块龙头', type:'own', attitude:'🏆 成功案例', score:3, note:'去年+200% · 瓶颈经典' },
+  { id:23, code:'300376', name:'易事特', sector:'800V DC', position:'数据中心供电', type:'fan', attitude:'👀 粉丝推荐', score:2, note:'非本人选，众包名单' },
+];
+
+// ====== 渲染函数 ======
+function renderScoreStars(score) {
+  return '⭐'.repeat(score) + '☆'.repeat(5 - score);
+}
+
+function renderScoreBar(score) {
+  const pct = (score / 5) * 100;
+  const cls = score >= 4 ? 'gold' : 'purple';
+  return `<div class="rank-bar"><div class="rank-fill ${cls}" style="width:${pct}%"></div><span style="font-size:11px;color:var(--text-dim)">${score}/5</span></div>`;
+}
+
+function getTagHtml(type) {
+  const map = {
+    hold: '<span class="tag tag-hold">📦 持仓</span>',
+    rec: '<span class="tag tag-rec">💡 推荐</span>',
+    watch: '<span class="tag tag-watch">👀 观察</span>'
+  };
+  return map[type] || '';
+}
+
+function getFoxTagHtml(type) {
+  const map = {
+    core: '<span class="tag tag-core">🟢 核心</span>',
+    list: '<span class="tag tag-watch">📋 清单</span>',
+    own: '<span class="tag tag-own">🔥 A股点名</span>',
+    trade: '<span class="tag tag-rec">📈 交易</span>',
+    fan: '<span class="tag tag-fan">👥 粉丝推荐</span>'
+  };
+  return map[type] || '';
+}
+
+function renderStockTab() {
+  const tbody = document.getElementById('stockTableBody');
+  tbody.innerHTML = STOCKS.map(s => `
+    <tr>
+      <td>${s.id}</td>
+      <td><span class="code">${s.code}</span></td>
+      <td><strong>${s.name}</strong></td>
+      <td>${s.sector}</td>
+      <td>${s.source}</td>
+      <td>${getTagHtml(s.type)}</td>
+      <td><span class="stars">${renderScoreStars(s.score)}</span></td>
+      <td>${renderScoreBar(s.score)}</td>
+      <td style="font-size:12px;">${s.status}</td>
+      <td><a class="report-link" href="${s.report}" target="_blank" title="在新窗口打开报告">📄 查看</a></td>
+    </tr>
+  `).join('');
+
+  const holdCount = STOCKS.filter(s => s.type === 'hold').length;
+  const recCount = STOCKS.filter(s => s.type === 'rec').length;
+  const watchCount = STOCKS.filter(s => s.type === 'watch').length;
+  const avgScore = (STOCKS.reduce((a,b) => a + b.score, 0) / STOCKS.length).toFixed(1);
+
+  document.getElementById('holdCount').textContent = holdCount;
+  document.getElementById('recCount').textContent = recCount;
+  document.getElementById('watchCount').textContent = watchCount;
+  document.getElementById('avgScore').textContent = avgScore + ' ⭐';
+}
+
+function renderFoxTab() {
+  // 统计
+  const total = FOX_STOCKS.length;
+  const sectors = [...new Set(FOX_STOCKS.map(s => s.sector))];
+  const maxViews = '619K';
+  const topScore = Math.max(...FOX_STOCKS.map(s => s.score));
+
+  document.getElementById('foxTotal').textContent = total;
+  document.getElementById('foxSectors').textContent = sectors.length;
+  document.getElementById('foxViews').textContent = maxViews;
+  document.getElementById('foxTopScore').textContent = '⭐'.repeat(topScore);
+
+  // 赛道标签
+  const sectorColors = {
+    '光子/CPO': 'var(--accent)',
+    'AI半导体': 'var(--accent2)',
+    '光通信/EMS': 'var(--blue)',
+    '电源模块': 'var(--orange)',
+    '网络设备': 'var(--text-dim)',
+    'AI云计算': 'var(--pink)',
+    '存储/HBM': 'var(--gold)',
+    '日本供应链': 'var(--red)',
+    '台湾供应链': 'var(--green)',
+    '人形机器人/减速器': 'var(--accent2)',
+    '光模块/AI': 'var(--accent)',
+    '800V DC': 'var(--orange)'
+  };
+
+  document.getElementById('sectorTags').innerHTML = sectors.map(sec => `
+    <span style="padding:6px 16px; border-radius:20px; font-size:13px; font-weight:600; background:rgba(108,92,231,0.08); color:${sectorColors[sec]||'var(--accent2)'}; border:1px solid ${sectorColors[sec]||'var(--accent2)'}20;">
+      ${sec} · ${FOX_STOCKS.filter(s => s.sector === sec).length}只
+    </span>
+  `).join('');
+
+  // 表格
+  const tbody = document.getElementById('foxTableBody');
+  tbody.innerHTML = FOX_STOCKS.map(s => `
+    <tr>
+      <td>${s.id}</td>
+      <td><span class="code">${s.code}</span></td>
+      <td><strong>${s.name}</strong></td>
+      <td>${s.sector}</td>
+      <td>${s.position}</td>
+      <td>${getFoxTagHtml(s.type)}</td>
+      <td style="font-size:13px;">${s.attitude}</td>
+      <td><span class="stars">${renderScoreStars(s.score)}</span></td>
+      <td style="font-size:12px;">${s.note}</td>
+    </tr>
+  `).join('');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+  if (name === 'stocks') {
+    document.querySelector('.tab:nth-child(1)').classList.add('active');
+    document.getElementById('tab-stocks').classList.add('active');
+  } else {
+    document.querySelector('.tab:nth-child(2)').classList.add('active');
+    document.getElementById('tab-fox').classList.add('active');
+  }
+}
+
+function updateTime() {
+  document.getElementById('updateTime').textContent = new Date().toLocaleString('zh-CN', {timeZone:'Asia/Shanghai'});
+}
+
+// 初始化
+renderStockTab();
+renderFoxTab();
+updateTime();
+setInterval(updateTime, 30000);
+</script>
+
+</body>
+</html>
