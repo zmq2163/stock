@@ -112,9 +112,10 @@ body {
 
 .table-wrapper {
   background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
-table { width: 100%; border-collapse: collapse; }
+table { width: 100%; border-collapse: collapse; min-width: 900px; }
 thead { background: rgba(108,92,231,0.08); }
 th {
   padding: 14px 16px; text-align: left; font-size: 12px; font-weight: 700;
